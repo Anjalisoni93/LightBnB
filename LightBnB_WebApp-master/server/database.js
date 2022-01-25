@@ -9,10 +9,6 @@ const pool = new Pool({
   database: 'lightbnb'
 });
 
-// This line is to test that our connection to server and the query passed is working fine.
-// pool.query(`SELECT title FROM properties LIMIT 10;`).then(response => {console.log(response)})
-
-
 /// Users
 
 /**
@@ -118,28 +114,34 @@ const getAllProperties = function(options, limit = 10) {
 
   const prefix = () => queryParams.length > 1 ? 'AND' : 'WHERE';
 
+  // Select property by city
   if (options.city) {
     queryParams.push(`%${options.city}%`);
     queryString += `WHERE city LIKE $${queryParams.length} `;
   }
 
+  // Select the property for the owner thats signed in
   if (options.owner_id) {
     queryParams.push(`${options.owner_id}`);
     queryString += `${prefix()} properties.owner_id = $${queryParams.length} `;
   }
 
+  // Select the minimum cost per night with price range
   if (options.minimum_price_per_night) {
     queryParams.push(`${options.minimum_price_per_night * 100}`);
     queryString += `${prefix()} cost_per_night >= $${queryParams.length} `;
   }
 
+  // Select the maximum cost per night the property per price range
   if (options.maximum_price_per_night) {
     queryParams.push(`${options.maximum_price_per_night * 100}`);
     queryString += `${prefix()} cost_per_night <= $${queryParams.length} `;
   }
 
+  // Had to write GROUP BY before  HAVING 
   queryString += `GROUP BY properties.id `;
 
+  // Select rating and the result will be based on above the rating owner chooses
   if (options.minimum_rating) {
     queryParams.push(options.minimum_rating);
     queryString += `HAVING AVG(property_reviews.rating) >= $${queryParams.length} `;
@@ -184,19 +186,19 @@ const addProperty = function(property) {
     property.parking_spaces,
     property.number_of_bathrooms,
     property.number_of_bedrooms
-  ]
+  ];
 
   return pool
-  .query(`INSERT INTO properties
+    .query(`INSERT INTO properties
   (owner_id, title, description, thumbnail_photo_url, cover_photo_url, cost_per_night, street, city, province, post_code, country, parking_spaces, number_of_bathrooms, number_of_bedrooms)
   VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
   RETURNING *; `, queryValues)
-  .then((result) => {
-    console.log(result.rows);
-    return result.rows[0];
-  })
-  .catch((err) => {
-    console.log(err.message);
-  });
+    .then((result) => {
+      console.log(result.rows);
+      return result.rows[0];
+    })
+    .catch((err) => {
+      console.log(err.message);
+    });
 };
 exports.addProperty = addProperty;
